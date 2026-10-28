@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 import { authApi } from "../api/AuthApi";
-import { Button } from "../../../components/ui/Button";
-import { Input } from "../../../components/ui/Input";
+import { Alert, Button, Input } from "../../../components/ui";
 
 export function LoginForm() {
   const navigate = useNavigate();
@@ -82,16 +81,13 @@ export function LoginForm() {
       />
 
       {errorMessage && (
-        <p
-          role="alert"
-          className="rounded-lg border border-red-900/60 bg-red-950/30 px-4 py-3 text-sm text-red-300"
-        >
-          {errorMessage}
-        </p>
+        <Alert variant="error">{errorMessage}</Alert>
       )}
 
       <Button
         type="submit"
+        fullWidth
+        size="lg"
         loading={isSubmitting}
         disabled={!username.trim() || !password}
       >

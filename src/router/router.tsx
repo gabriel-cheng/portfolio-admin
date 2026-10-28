@@ -11,6 +11,8 @@ import { ProjectsPage } from "../pages/projects/ProjectsPage";
 
 import { RouteErrorPage } from "../components/layouts/RouteErrorPage";
 import { ProtectedRoute } from "./guards/ProtectedRoute";
+import { ProjectEditorPage } from "../pages/projects/ProjectEditorPage";
+import { ExperienceEditorPage } from "../pages/experiences/ExperienceEditorPage";
 
 export const router = createBrowserRouter([
   {
@@ -55,6 +57,32 @@ export const router = createBrowserRouter([
                 handle: {
                   title: "Experiences | GH Carvalho",
                 },
+              },
+              {
+                path: "/projects/new",
+                element: <ProjectEditorPage />,
+                handle: {
+                  title: "Novo projeto | GH Carvalho",
+                },
+              },
+              {
+                path: "/projects/:id/edit",
+                element: <ProjectEditorPage />,
+                handle: {
+                  title: "Editar projeto | GH Carvalho",
+                },
+              },
+              {
+                path: "experiences",
+                element: <ExperiencesPage />,
+              },
+              {
+                path: "experiences/new",
+                element: <ExperienceEditorPage />,
+              },
+              {
+                path: "experiences/:id/edit",
+                element: <ExperienceEditorPage />,
               },
             ],
           },

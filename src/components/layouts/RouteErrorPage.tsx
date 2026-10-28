@@ -1,4 +1,5 @@
-import { isRouteErrorResponse, useRouteError } from "react-router-dom";
+import { isRouteErrorResponse, useRouteError, Link } from "react-router-dom";
+import { Card, getButtonClassName } from "../ui";
 
 export function RouteErrorPage() {
   const error = useRouteError();
@@ -18,22 +19,27 @@ export function RouteErrorPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-zinc-100">
-      <section className="max-w-md text-center">
-        <p className="text-sm font-medium uppercase tracking-widest text-zinc-500">
+      <Card className="max-w-md text-center">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
           GH Carvalho
         </p>
 
-        <h1 className="mt-4 text-2xl font-semibold">{title}</h1>
+        <h1 className="mt-4 text-2xl font-semibold text-white">{title}</h1>
 
         <p className="mt-3 text-sm leading-6 text-zinc-400">{description}</p>
 
-        <a
-          href="/dashboard"
-          className="mt-6 inline-flex items-center justify-center rounded-lg border border-zinc-700 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-zinc-900"
-        >
-          Voltar ao dashboard
-        </a>
-      </section>
+        <div className="mt-6">
+          <Link
+            to="/dashboard"
+            className={getButtonClassName({
+              variant: "secondary",
+              size: "md",
+            })}
+          >
+            Voltar ao dashboard
+          </Link>
+        </div>
+      </Card>
     </main>
   );
 }

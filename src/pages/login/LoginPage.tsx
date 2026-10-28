@@ -1,6 +1,5 @@
-import { Brand } from "../../components/ui/Brand";
-import { Card } from "../../components/ui/Card";
-import { LoginForm } from "../../components/layouts/LoginForm";
+import { Brand, Card } from "../../components/ui";
+import { LoginForm } from "../../features/auth/components/LoginForm";
 
 export function LoginPage() {
   return (
