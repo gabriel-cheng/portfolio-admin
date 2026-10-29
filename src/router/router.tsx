@@ -13,6 +13,7 @@ import { RouteErrorPage } from "../components/layouts/RouteErrorPage";
 import { ProtectedRoute } from "./guards/ProtectedRoute";
 import { ProjectEditorPage } from "../pages/projects/ProjectEditorPage";
 import { ExperienceEditorPage } from "../pages/experiences/ExperienceEditorPage";
+import { ApiDocsPage } from "../pages/docs/ApiDocsPage";
 
 export const router = createBrowserRouter([
   {
@@ -83,6 +84,10 @@ export const router = createBrowserRouter([
               {
                 path: "experiences/:id/edit",
                 element: <ExperienceEditorPage />,
+              },
+              {
+                path: "/docs/api",
+                element: <ApiDocsPage />,
               },
             ],
           },
