@@ -19,6 +19,12 @@ const navigationItems = [
     icon: "▣",
     end: false,
   },
+  {
+    label: "Docs",
+    path: "/docs/api",
+    icon: "▲",
+    end: false,
+  },
 ];
 
 export function AdminSidebar() {
