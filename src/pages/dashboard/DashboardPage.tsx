@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { FolderKanban, Briefcase, ArrowRight } from "lucide-react";
+import { FolderKanban, Briefcase, Building2, ArrowRight } from "lucide-react";
 import { PageHeader, Card } from "../../components/ui";
 
 const sections = [
@@ -11,8 +11,15 @@ const sections = [
     icon: FolderKanban,
   },
   {
+    title: "Empresas",
+    description: "Gerencie as empresas e organizações vinculadas às suas experiências.",
+    path: "/companies",
+    action: "Gerenciar empresas",
+    icon: Building2,
+  },
+  {
     title: "Experiências",
-    description: "Gerencie suas experiências profissionais, períodos, empresas e tecnologias.",
+    description: "Gerencie suas experiências profissionais, períodos, cargos e tecnologias.",
     path: "/experiences",
     action: "Gerenciar experiências",
     icon: Briefcase,
@@ -28,7 +35,7 @@ export function DashboardPage() {
         description="Acesse cada seção para acompanhar e atualizar o conteúdo publicado no seu portfólio."
       />
 
-      <section className="grid gap-5 sm:grid-cols-2">
+      <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {sections.map((section) => {
           const Icon = section.icon;
 

@@ -14,6 +14,12 @@ const navigationItems = [
     end: false,
   },
   {
+    label: "Companies",
+    path: "/companies",
+    icon: "🏢",
+    end: false,
+  },
+  {
     label: "Experiences",
     path: "/experiences",
     icon: "▣",

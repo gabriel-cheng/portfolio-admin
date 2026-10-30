@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Building2 } from "lucide-react";
 
 import { experiencesApi } from "../../features/experiences/api/experiencesApi";
+import { companiesApi } from "../../features/companies/api/companiesApi";
+import type { Company } from "../../features/companies/types/company.types";
 import {
   PageHeader,
   Card,
@@ -23,6 +25,7 @@ import type {
 
 const initialForm: ExperienceRequest = {
   slug: "",
+  companyId: undefined,
   company: "",
   role: "",
   employmentType: "FULL_TIME",
@@ -79,44 +82,58 @@ export function ExperienceEditorPage() {
   const isEditing = Boolean(id);
 
   const [form, setForm] = useState<ExperienceRequest>(initialForm);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [isCustomCompany, setIsCustomCompany] = useState(false);
   const [technologiesInput, setTechnologiesInput] = useState("");
-  const [loading, setLoading] = useState(isEditing);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) {
-      return;
-    }
-
     let cancelled = false;
 
-    async function loadExperience(experienceId: string) {
+    async function loadData() {
       try {
         setLoading(true);
         setError(null);
 
-        const experience = await experiencesApi.getById(experienceId);
+        const loadedCompanies = await companiesApi.list();
 
         if (cancelled) {
           return;
         }
 
-        setForm({
-          slug: experience.slug,
-          company: experience.company,
-          role: experience.role,
-          employmentType: experience.employmentType,
-          location: experience.location ?? "",
-          description: experience.description,
-          startDate: experience.startDate,
-          endDate: experience.endDate,
-          current: experience.current,
-          displayOrder: experience.displayOrder,
-          technologies: experience.technologies,
-        });
+        setCompanies(loadedCompanies);
 
-        setTechnologiesInput(experience.technologies.join(", "));
+        if (id) {
+          const experience = await experiencesApi.getById(id);
+
+          if (cancelled) {
+            return;
+          }
+
+          const hasMatchedCompany = loadedCompanies.some(
+            (c) => c.id === experience.companyId || c.name === experience.company,
+          );
+
+          setForm({
+            slug: experience.slug,
+            companyId: experience.companyId,
+            company: experience.company,
+            role: experience.role,
+            employmentType: experience.employmentType,
+            location: experience.location ?? "",
+            description: experience.description,
+            startDate: experience.startDate,
+            endDate: experience.endDate,
+            current: experience.current,
+            displayOrder: experience.displayOrder,
+            technologies: experience.technologies,
+          });
+
+          setIsCustomCompany(!hasMatchedCompany && !experience.companyId);
+          setTechnologiesInput(experience.technologies.join(", "));
+        }
       } catch (requestError) {
         if (!cancelled) {
           setError(getErrorMessage(requestError));
@@ -128,7 +145,7 @@ export function ExperienceEditorPage() {
       }
     }
 
-    void loadExperience(id);
+    void loadData();
 
     return () => {
       cancelled = true;
@@ -145,6 +162,25 @@ export function ExperienceEditorPage() {
     }));
   }
 
+  function handleCompanySelect(selectedValue: string) {
+    if (selectedValue === "NEW_COMPANY") {
+      setIsCustomCompany(true);
+      setForm((current) => ({
+        ...current,
+        companyId: undefined,
+        company: "",
+      }));
+    } else {
+      setIsCustomCompany(false);
+      const chosen = companies.find((c) => c.id === selectedValue);
+      setForm((current) => ({
+        ...current,
+        companyId: chosen ? chosen.id : undefined,
+        company: chosen ? chosen.name : "",
+      }));
+    }
+  }
+
   async function handleSubmit() {
     setError(null);
 
@@ -156,7 +192,8 @@ export function ExperienceEditorPage() {
     const request: ExperienceRequest = {
       ...form,
       slug: form.slug.trim(),
-      company: form.company.trim(),
+      companyId: form.companyId,
+      company: form.company?.trim(),
       role: form.role.trim(),
       location: form.location?.trim() || null,
       description: form.description.trim(),
@@ -166,12 +203,12 @@ export function ExperienceEditorPage() {
 
     if (
       !request.slug ||
-      !request.company ||
+      (!request.company && !request.companyId) ||
       !request.role ||
       !request.description ||
       !request.startDate
     ) {
-      setError("Preencha todos os campos obrigatórios.");
+      setError("Preencha todos os campos obrigatórios (incluindo a empresa).");
       return;
     }
 
@@ -211,6 +248,12 @@ export function ExperienceEditorPage() {
     return <LoadingState message="Carregando experiência..." />;
   }
 
+  const companySelectOptions = [
+    { value: "", label: "-- Selecionar empresa existente --" },
+    ...companies.map((c) => ({ value: c.id, label: c.name })),
+    { value: "NEW_COMPANY", label: "+ Cadastrar novo nome de empresa" },
+  ];
+
   return (
     <div className="mx-auto max-w-4xl space-y-7">
       <PageHeader
@@ -245,25 +288,76 @@ export function ExperienceEditorPage() {
         className="space-y-6"
       >
         <Card className="space-y-5 bg-zinc-900/40 p-5 sm:p-6">
-          <div>
-            <h3 className="font-semibold text-zinc-100">
-              Informações profissionais
-            </h3>
-            <p className="mt-1 text-sm text-zinc-500">
-              Identificação da empresa e da função exercida.
-            </p>
+          <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+            <div>
+              <h3 className="font-semibold text-zinc-100">
+                Informações profissionais
+              </h3>
+              <p className="mt-1 text-sm text-zinc-500">
+                Identificação da empresa e da função exercida.
+              </p>
+            </div>
+
+            <Link
+              to="/companies"
+              className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white underline decoration-zinc-700 underline-offset-4"
+            >
+              <Building2 className="size-3.5" />
+              <span>Gerenciar Empresas</span>
+            </Link>
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <Input
-              id="company"
-              label="Empresa"
-              required
-              maxLength={180}
-              value={form.company}
-              onChange={(event) => updateField("company", event.target.value)}
-              placeholder="Nome da empresa"
-            />
+            <div className="sm:col-span-2 space-y-3">
+              {companies.length > 0 && !isCustomCompany ? (
+                <div>
+                  <Select
+                    id="companySelect"
+                    label="Empresa"
+                    required
+                    value={form.companyId ?? ""}
+                    onChange={(event) => handleCompanySelect(event.target.value)}
+                    options={companySelectOptions}
+                    hint="Selecione uma empresa já cadastrada ou clique em cadastrar novo nome."
+                  />
+
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomCompany(true)}
+                      className="text-xs text-blue-400 hover:underline cursor-pointer"
+                    >
+                      Prefiro digitar um novo nome de empresa
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <Input
+                    id="company"
+                    label="Nome da empresa"
+                    required
+                    maxLength={180}
+                    value={form.company ?? ""}
+                    onChange={(event) => updateField("company", event.target.value)}
+                    placeholder="Ex.: Google, Nubank, Codes"
+                    hint="A empresa será criada ou vinculada automaticamente pelo nome."
+                  />
+
+                  {companies.length > 0 && (
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomCompany(false)}
+                        className="text-xs text-blue-400 hover:underline cursor-pointer"
+                      >
+                        Selecionar da lista de empresas cadastradas ({companies.length})
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <Input
               id="role"
@@ -300,18 +394,16 @@ export function ExperienceEditorPage() {
               options={employmentTypeOptions}
             />
 
-            <div className="sm:col-span-2">
-              <Input
-                id="location"
-                label="Localização"
-                maxLength={180}
-                value={form.location ?? ""}
-                onChange={(event) =>
-                  updateField("location", event.target.value)
-                }
-                placeholder="Ex.: Remoto · Brasil"
-              />
-            </div>
+            <Input
+              id="location"
+              label="Localização"
+              maxLength={180}
+              value={form.location ?? ""}
+              onChange={(event) =>
+                updateField("location", event.target.value)
+              }
+              placeholder="Ex.: Remoto · Brasil"
+            />
           </div>
         </Card>
 

@@ -5,6 +5,8 @@ import { AuthLayout } from "../components/layouts/AuthLayout";
 import { RootLayout } from "../components/layouts/RootLayout";
 
 import { DashboardPage } from "../pages/dashboard/DashboardPage";
+import { CompaniesPage } from "../pages/companies/CompaniesPage";
+import { CompanyEditorPage } from "../pages/companies/CompanyEditorPage";
 import { ExperiencesPage } from "../pages/experiences/ExperiencesPage";
 import { LoginPage } from "../pages/login/LoginPage";
 import { ProjectsPage } from "../pages/projects/ProjectsPage";
@@ -53,13 +55,6 @@ export const router = createBrowserRouter([
                 },
               },
               {
-                path: "/experiences",
-                element: <ExperiencesPage />,
-                handle: {
-                  title: "Experiences | GH Carvalho",
-                },
-              },
-              {
                 path: "/projects/new",
                 element: <ProjectEditorPage />,
                 handle: {
@@ -74,20 +69,53 @@ export const router = createBrowserRouter([
                 },
               },
               {
-                path: "experiences",
+                path: "/companies",
+                element: <CompaniesPage />,
+                handle: {
+                  title: "Empresas | GH Carvalho",
+                },
+              },
+              {
+                path: "/companies/new",
+                element: <CompanyEditorPage />,
+                handle: {
+                  title: "Nova empresa | GH Carvalho",
+                },
+              },
+              {
+                path: "/companies/:id/edit",
+                element: <CompanyEditorPage />,
+                handle: {
+                  title: "Editar empresa | GH Carvalho",
+                },
+              },
+              {
+                path: "/experiences",
                 element: <ExperiencesPage />,
+                handle: {
+                  title: "Experiences | GH Carvalho",
+                },
               },
               {
-                path: "experiences/new",
+                path: "/experiences/new",
                 element: <ExperienceEditorPage />,
+                handle: {
+                  title: "Nova experiência | GH Carvalho",
+                },
               },
               {
-                path: "experiences/:id/edit",
+                path: "/experiences/:id/edit",
                 element: <ExperienceEditorPage />,
+                handle: {
+                  title: "Editar experiência | GH Carvalho",
+                },
               },
               {
                 path: "/docs/api",
                 element: <ApiDocsPage />,
+                handle: {
+                  title: "Docs | GH Carvalho",
+                },
               },
             ],
           },

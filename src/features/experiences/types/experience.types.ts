@@ -1,3 +1,5 @@
+import type { Company } from "../../companies/types/company.types";
+
 export type ExperienceStatus = "DRAFT" | "PUBLISHED";
 
 export type EmploymentType =
@@ -12,7 +14,9 @@ export type EmploymentType =
 export interface Experience {
   id: string;
   slug: string;
+  companyId?: string;
   company: string;
+  companyDetails?: Partial<Company> | null;
   role: string;
   employmentType: EmploymentType;
   location: string | null;
@@ -29,7 +33,8 @@ export interface Experience {
 
 export interface ExperienceRequest {
   slug: string;
-  company: string;
+  companyId?: string;
+  company?: string;
   role: string;
   employmentType: EmploymentType;
   location: string | null;
