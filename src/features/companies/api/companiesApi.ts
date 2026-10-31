@@ -28,8 +28,21 @@ export const companiesApi = {
     return response.data;
   },
 
+  async publish(id: string): Promise<Company> {
+    const response = await apiClient.patch<Company>(
+      `/v1/admin/companies/${id}/publish`,
+    );
+    return response.data;
+  },
+
+  async unpublish(id: string): Promise<Company> {
+    const response = await apiClient.patch<Company>(
+      `/v1/admin/companies/${id}/unpublish`,
+    );
+    return response.data;
+  },
+
   async delete(id: string): Promise<void> {
     await apiClient.delete(`/v1/admin/companies/${id}`);
   },
 };
-

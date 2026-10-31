@@ -1,20 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
-import { Plus, Building2, Briefcase, Globe, RefreshCw, ExternalLink } from "lucide-react";
+import {
+  Plus,
+  Building2,
+  Briefcase,
+  Globe,
+  FileEdit,
+  RefreshCw,
+  ExternalLink,
+} from "lucide-react";
 
 import { companiesApi } from "../../features/companies/api/companiesApi";
-import type { Company } from "../../features/companies/types/company.types";
+import type { Company, CompanyStatus } from "../../features/companies/types/company.types";
 import {
   PageHeader,
   StatCard,
+  StatusBadge,
   Alert,
   EmptyState,
   LoadingState,
   Input,
+  Select,
   Button,
   getButtonClassName,
 } from "../../components/ui";
+
+type StatusFilter = "ALL" | CompanyStatus;
 
 function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
@@ -40,6 +52,7 @@ export function CompaniesPage() {
   const location = useLocation();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [loading, setLoading] = useState(true);
   const [busyCompanyId, setBusyCompanyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -95,21 +108,24 @@ export function CompaniesPage() {
 
     return companies
       .filter((company) => {
-        if (normalizedSearch.length === 0) {
-          return true;
-        }
+        const matchesSearch =
+          normalizedSearch.length === 0 ||
+          [
+            company.name,
+            company.slug,
+            company.description ?? "",
+            company.website ?? "",
+          ].some((value) =>
+            value.toLocaleLowerCase("pt-BR").includes(normalizedSearch),
+          );
 
-        return [
-          company.name,
-          company.slug,
-          company.description ?? "",
-          company.website ?? "",
-        ].some((value) =>
-          value.toLocaleLowerCase("pt-BR").includes(normalizedSearch),
-        );
+        const matchesStatus =
+          statusFilter === "ALL" || company.status === statusFilter;
+
+        return matchesSearch && matchesStatus;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [companies, search]);
+  }, [companies, search, statusFilter]);
 
   const totalExperiences = useMemo(() => {
     return companies.reduce(
@@ -118,9 +134,43 @@ export function CompaniesPage() {
     );
   }, [companies]);
 
-  const withWebsiteCount = useMemo(() => {
-    return companies.filter((c) => Boolean(c.website)).length;
+  const publishedCount = useMemo(() => {
+    return companies.filter((c) => c.status === "PUBLISHED").length;
   }, [companies]);
+
+  const draftCount = useMemo(() => {
+    return companies.filter((c) => c.status === "DRAFT").length;
+  }, [companies]);
+
+  async function handlePublicationToggle(company: Company) {
+    setBusyCompanyId(company.id);
+    setError(null);
+    setNotice(null);
+
+    try {
+      if (company.status === "PUBLISHED") {
+        const updated = await companiesApi.unpublish(company.id);
+        setCompanies((current) =>
+          current.map((item) => (item.id === company.id ? updated : item)),
+        );
+        setNotice(
+          `A empresa "${company.name}" foi despublicada. Suas experiências agora estão ocultas do portfólio público.`,
+        );
+      } else {
+        const updated = await companiesApi.publish(company.id);
+        setCompanies((current) =>
+          current.map((item) => (item.id === company.id ? updated : item)),
+        );
+        setNotice(
+          `A empresa "${company.name}" foi publicada. Suas experiências agora estão visíveis no portfólio público.`,
+        );
+      }
+    } catch (requestError) {
+      setError(getErrorMessage(requestError));
+    } finally {
+      setBusyCompanyId(null);
+    }
+  }
 
   async function handleDelete(company: Company) {
     const experienceCount = company.experiences?.length ?? 0;
@@ -161,7 +211,7 @@ export function CompaniesPage() {
       <PageHeader
         eyebrow="Portfolio content / Companies"
         title="Empresas"
-        description="Gerencie as empresas e organizações associadas às suas experiências profissionais."
+        description="Gerencie as empresas e sua publicação. A empresa é a unidade de publicação de todas as experiências associadas."
         actions={
           <Link
             to="/companies/new"
@@ -175,7 +225,7 @@ export function CompaniesPage() {
 
       <section
         aria-label="Resumo das empresas"
-        className="grid gap-3 sm:grid-cols-3"
+        className="grid gap-3 sm:grid-cols-4"
       >
         <StatCard
           label="Total de empresas"
@@ -183,14 +233,19 @@ export function CompaniesPage() {
           icon={<Building2 className="size-5" />}
         />
         <StatCard
+          label="Publicadas"
+          value={publishedCount}
+          icon={<Globe className="size-5" />}
+        />
+        <StatCard
+          label="Rascunhos"
+          value={draftCount}
+          icon={<FileEdit className="size-5" />}
+        />
+        <StatCard
           label="Experiências vinculadas"
           value={totalExperiences}
           icon={<Briefcase className="size-5" />}
-        />
-        <StatCard
-          label="Com website informado"
-          value={withWebsiteCount}
-          icon={<Globe className="size-5" />}
         />
       </section>
 
@@ -228,16 +283,35 @@ export function CompaniesPage() {
             </p>
           </div>
 
-          <div className="w-full sm:w-80">
-            <Input
-              id="company-search"
-              label="Buscar empresas"
-              hideLabel
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nome, slug, site..."
-            />
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="w-full sm:w-72">
+              <Input
+                id="company-search"
+                label="Buscar empresas"
+                hideLabel
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Buscar por nome, slug, site..."
+              />
+            </div>
+
+            <div className="w-full sm:w-48">
+              <Select
+                id="company-status"
+                label="Filtrar por status"
+                hideLabel
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as StatusFilter)
+                }
+                options={[
+                  { value: "ALL", label: "Todos os status" },
+                  { value: "PUBLISHED", label: "Publicadas" },
+                  { value: "DRAFT", label: "Rascunhos" },
+                ]}
+              />
+            </div>
           </div>
         </div>
 
@@ -254,7 +328,7 @@ export function CompaniesPage() {
             description={
               companies.length === 0
                 ? "Cadastre sua primeira empresa para associar experiências profissionais."
-                : "Tente alterar os termos da busca."
+                : "Tente alterar os termos da busca ou selecionar outro status."
             }
             action={
               companies.length === 0 ? (
@@ -273,12 +347,13 @@ export function CompaniesPage() {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px] text-left text-sm">
+            <table className="w-full min-w-[850px] text-left text-sm">
               <thead className="bg-zinc-950/60 text-xs uppercase tracking-wider text-zinc-500">
                 <tr>
                   <th className="px-5 py-3 font-medium">Empresa</th>
-                  <th className="px-5 py-3 font-medium">Descrição</th>
+                  <th className="px-5 py-3 font-medium">Status</th>
                   <th className="px-5 py-3 font-medium">Experiências</th>
+                  <th className="px-5 py-3 font-medium">Descrição</th>
                   <th className="px-5 py-3 text-right font-medium">Ações</th>
                 </tr>
               </thead>
@@ -340,10 +415,8 @@ export function CompaniesPage() {
                         </div>
                       </td>
 
-                      <td className="max-w-xs px-5 py-4 text-zinc-400">
-                        <p className="line-clamp-2 text-xs leading-relaxed">
-                          {company.description || "—"}
-                        </p>
+                      <td className="px-5 py-4">
+                        <StatusBadge status={company.status} />
                       </td>
 
                       <td className="px-5 py-4">
@@ -370,8 +443,27 @@ export function CompaniesPage() {
                         </div>
                       </td>
 
+                      <td className="max-w-xs px-5 py-4 text-zinc-400">
+                        <p className="line-clamp-2 text-xs leading-relaxed">
+                          {company.description || "—"}
+                        </p>
+                      </td>
+
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-3">
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => void handlePublicationToggle(company)}
+                            className="cursor-pointer font-medium text-zinc-300 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isBusy
+                              ? "Aguarde..."
+                              : company.status === "PUBLISHED"
+                                ? "Despublicar"
+                                : "Publicar"}
+                          </button>
+
                           <Link
                             to={`/companies/${company.id}/edit`}
                             className="font-medium text-zinc-300 underline decoration-zinc-700 underline-offset-4 hover:text-white"
@@ -400,4 +492,3 @@ export function CompaniesPage() {
     </div>
   );
 }
-

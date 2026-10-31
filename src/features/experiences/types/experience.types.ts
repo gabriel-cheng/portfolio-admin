@@ -1,7 +1,5 @@
 import type { Company } from "../../companies/types/company.types";
 
-export type ExperienceStatus = "DRAFT" | "PUBLISHED";
-
 export type EmploymentType =
   | "FULL_TIME"
   | "PART_TIME"
@@ -25,7 +23,6 @@ export interface Experience {
   endDate: string | null;
   current: boolean;
   displayOrder: number;
-  status: ExperienceStatus;
   technologies: string[];
   createdAt: string;
   updatedAt: string;

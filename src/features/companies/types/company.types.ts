@@ -1,5 +1,7 @@
 import type { Experience } from "../../experiences/types/experience.types";
 
+export type CompanyStatus = "DRAFT" | "PUBLISHED";
+
 export interface Company {
   id: string;
   name: string;
@@ -7,6 +9,7 @@ export interface Company {
   description: string | null;
   website: string | null;
   logoUrl: string | null;
+  status: CompanyStatus;
   experiences?: Experience[];
   createdAt: string;
   updatedAt: string;
@@ -19,4 +22,3 @@ export interface CompanyRequest {
   website: string | null;
   logoUrl: string | null;
 }
-

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import { Plus, Briefcase, Globe, FileEdit, RefreshCw } from "lucide-react";
+import { Plus, Briefcase, Building2, Cpu, RefreshCw, Info } from "lucide-react";
 
 import { experiencesApi } from "../../features/experiences/api/experiencesApi";
 import {
@@ -19,10 +19,7 @@ import {
 import type {
   EmploymentType,
   Experience,
-  ExperienceStatus,
 } from "../../features/experiences/types/experience.types";
-
-type StatusFilter = "ALL" | ExperienceStatus;
 
 function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
@@ -82,7 +79,7 @@ function formatEmploymentType(type: EmploymentType): string {
     OTHER: "Outro",
   };
 
-  return labels[type];
+  return labels[type] ?? type;
 }
 
 function formatPeriod(experience: Experience): string {
@@ -95,7 +92,7 @@ function formatPeriod(experience: Experience): string {
 export function ExperiencesPage() {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [selectedCompany, setSelectedCompany] = useState<string>("ALL");
   const [loading, setLoading] = useState(true);
   const [busyExperienceId, setBusyExperienceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +142,16 @@ export function ExperiencesPage() {
     };
   }, []);
 
+  const uniqueCompanies = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const exp of experiences) {
+      if (exp.company) {
+        map.set(exp.company, exp.company);
+      }
+    }
+    return Array.from(map.keys()).sort();
+  }, [experiences]);
+
   const filteredExperiences = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase("pt-BR");
 
@@ -162,43 +169,23 @@ export function ExperiencesPage() {
             value.toLocaleLowerCase("pt-BR").includes(normalizedSearch),
           );
 
-        const matchesStatus =
-          statusFilter === "ALL" || experience.status === statusFilter;
+        const matchesCompany =
+          selectedCompany === "ALL" || experience.company === selectedCompany;
 
-        return matchesSearch && matchesStatus;
+        return matchesSearch && matchesCompany;
       })
       .sort((a, b) => a.displayOrder - b.displayOrder);
-  }, [experiences, search, statusFilter]);
+  }, [experiences, search, selectedCompany]);
 
-  const publishedCount = experiences.filter(
-    (experience) => experience.status === "PUBLISHED",
-  ).length;
-
-  const draftCount = experiences.filter(
-    (experience) => experience.status === "DRAFT",
-  ).length;
-
-  async function handlePublicationToggle(experience: Experience) {
-    setBusyExperienceId(experience.id);
-    setError(null);
-    setNotice(null);
-
-    try {
-      if (experience.status === "PUBLISHED") {
-        await experiencesApi.unpublish(experience.id);
-        setNotice(`A experiência em "${experience.company}" foi despublicada.`);
-      } else {
-        await experiencesApi.publish(experience.id);
-        setNotice(`A experiência em "${experience.company}" foi publicada.`);
+  const uniqueTechnologiesCount = useMemo(() => {
+    const techSet = new Set<string>();
+    for (const exp of experiences) {
+      for (const tech of exp.technologies) {
+        techSet.add(tech.toLowerCase());
       }
-
-      await loadExperiences();
-    } catch (requestError) {
-      setError(getErrorMessage(requestError));
-    } finally {
-      setBusyExperienceId(null);
     }
-  }
+    return techSet.size;
+  }, [experiences]);
 
   async function handleDelete(experience: Experience) {
     const confirmed = window.confirm(
@@ -220,7 +207,9 @@ export function ExperiencesPage() {
         current.filter((item) => item.id !== experience.id),
       );
 
-      setNotice(`A experiência em "${experience.company}" foi excluída.`);
+      setNotice(
+        `A experiência "${experience.role}" em "${experience.company}" foi excluída.`,
+      );
     } catch (requestError) {
       setError(getErrorMessage(requestError));
     } finally {
@@ -233,7 +222,7 @@ export function ExperiencesPage() {
       <PageHeader
         eyebrow="Portfolio content / Experiences"
         title="Experiências profissionais"
-        description="Gerencie suas experiências profissionais, períodos, tecnologias e publicações no portfólio."
+        description="Gerencie os cargos e trajetórias de cada empresa. A publicação pública é controlada através do status da empresa."
         actions={
           <Link
             to="/experiences/new"
@@ -245,6 +234,24 @@ export function ExperiencesPage() {
         }
       />
 
+      <div className="flex items-start gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-xs leading-relaxed text-blue-200">
+        <Info className="size-4 shrink-0 text-blue-400 mt-0.5" />
+        <p>
+          <strong>Publicação unificada:</strong> As experiências não possuem
+          publicação individual. Todas as experiências de uma empresa publicada
+          são exibidas no portfólio público, enquanto empresas em rascunho
+          permanecem ocultas. Para alterar a visibilidade pública, gerencie o
+          status na página de{" "}
+          <Link
+            to="/companies"
+            className="font-medium underline underline-offset-2 hover:text-white"
+          >
+            Empresas
+          </Link>
+          .
+        </p>
+      </div>
+
       <section
         aria-label="Resumo das experiências"
         className="grid gap-3 sm:grid-cols-3"
@@ -255,14 +262,14 @@ export function ExperiencesPage() {
           icon={<Briefcase className="size-5" />}
         />
         <StatCard
-          label="Publicadas"
-          value={publishedCount}
-          icon={<Globe className="size-5" />}
+          label="Empresas com experiências"
+          value={uniqueCompanies.length}
+          icon={<Building2 className="size-5" />}
         />
         <StatCard
-          label="Rascunhos"
-          value={draftCount}
-          icon={<FileEdit className="size-5" />}
+          label="Tecnologias catalogadas"
+          value={uniqueTechnologiesCount}
+          icon={<Cpu className="size-5" />}
         />
       </section>
 
@@ -313,22 +320,21 @@ export function ExperiencesPage() {
               />
             </div>
 
-            <div className="w-full sm:w-48">
-              <Select
-                id="experience-status"
-                label="Filtrar por status"
-                hideLabel
-                value={statusFilter}
-                onChange={(event) =>
-                  setStatusFilter(event.target.value as StatusFilter)
-                }
-                options={[
-                  { value: "ALL", label: "Todos os status" },
-                  { value: "PUBLISHED", label: "Publicadas" },
-                  { value: "DRAFT", label: "Rascunhos" },
-                ]}
-              />
-            </div>
+            {uniqueCompanies.length > 0 && (
+              <div className="w-full sm:w-56">
+                <Select
+                  id="experience-company-filter"
+                  label="Filtrar por empresa"
+                  hideLabel
+                  value={selectedCompany}
+                  onChange={(event) => setSelectedCompany(event.target.value)}
+                  options={[
+                    { value: "ALL", label: "Todas as empresas" },
+                    ...uniqueCompanies.map((c) => ({ value: c, label: c })),
+                  ]}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -345,7 +351,7 @@ export function ExperiencesPage() {
             description={
               experiences.length === 0
                 ? "Quando você cadastrar experiências, elas aparecerão aqui."
-                : "Tente alterar a busca ou selecionar outro status."
+                : "Tente alterar a busca ou selecionar outra empresa."
             }
             action={
               experiences.length === 0 ? (
@@ -364,13 +370,14 @@ export function ExperiencesPage() {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-left text-sm">
+            <table className="w-full min-w-[950px] text-left text-sm">
               <thead className="bg-zinc-950/60 text-xs uppercase tracking-wider text-zinc-500">
                 <tr>
-                  <th className="px-5 py-3 font-medium">Experiência</th>
+                  <th className="px-5 py-3 font-medium">Cargo / Experiência</th>
+                  <th className="px-5 py-3 font-medium">Empresa</th>
+                  <th className="px-5 py-3 font-medium">Status da Empresa</th>
                   <th className="px-5 py-3 font-medium">Vínculo</th>
                   <th className="px-5 py-3 font-medium">Período</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
                   <th className="px-5 py-3 text-right font-medium">Ações</th>
                 </tr>
               </thead>
@@ -378,27 +385,64 @@ export function ExperiencesPage() {
               <tbody className="divide-y divide-zinc-800/80">
                 {filteredExperiences.map((experience) => {
                   const isBusy = busyExperienceId === experience.id;
+                  const companyStatus =
+                    experience.companyDetails?.status ?? "DRAFT";
 
                   return (
                     <tr
                       key={experience.id}
                       className="transition-colors hover:bg-zinc-800/20"
                     >
-                      <td className="max-w-sm px-5 py-4">
+                      <td className="max-w-xs px-5 py-4">
                         <p className="truncate font-medium text-zinc-100">
                           {experience.role}
-                        </p>
-
-                        <p className="mt-1 truncate text-xs text-zinc-400">
-                          {experience.company}
-                          {experience.location
-                            ? ` · ${experience.location}`
-                            : ""}
                         </p>
 
                         <p className="mt-1 truncate text-xs text-zinc-500">
                           /{experience.slug}
                         </p>
+
+                        {experience.technologies.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {experience.technologies.slice(0, 3).map((tech) => (
+                              <span
+                                key={tech}
+                                className="inline-block rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400 border border-zinc-700/60"
+                              >
+                                {tech}
+                              </span>
+                            ))}
+                            {experience.technologies.length > 3 && (
+                              <span className="text-[10px] text-zinc-500 self-center">
+                                +{experience.technologies.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <div className="flex flex-col">
+                          <span className="font-medium text-zinc-200">
+                            {experience.company}
+                          </span>
+                          {experience.location && (
+                            <span className="text-xs text-zinc-500">
+                              {experience.location}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={companyStatus} />
+                          <span className="text-[11px] text-zinc-500">
+                            {companyStatus === "PUBLISHED"
+                              ? "Visível"
+                              : "Oculta"}
+                          </span>
+                        </div>
                       </td>
 
                       <td className="px-5 py-4 text-zinc-400">
@@ -407,10 +451,6 @@ export function ExperiencesPage() {
 
                       <td className="whitespace-nowrap px-5 py-4 text-zinc-400">
                         {formatPeriod(experience)}
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <StatusBadge status={experience.status} />
                       </td>
 
                       <td className="px-5 py-4">
@@ -425,25 +465,10 @@ export function ExperiencesPage() {
                           <button
                             type="button"
                             disabled={isBusy}
-                            onClick={() =>
-                              void handlePublicationToggle(experience)
-                            }
-                            className="cursor-pointer font-medium text-zinc-300 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {isBusy
-                              ? "Aguarde..."
-                              : experience.status === "PUBLISHED"
-                                ? "Despublicar"
-                                : "Publicar"}
-                          </button>
-
-                          <button
-                            type="button"
-                            disabled={isBusy}
                             onClick={() => void handleDelete(experience)}
                             className="cursor-pointer font-medium text-red-400 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            Excluir
+                            {isBusy ? "Excluindo..." : "Excluir"}
                           </button>
                         </div>
                       </td>

@@ -35,22 +35,6 @@ export const experiencesApi = {
     return response.data;
   },
 
-  async publish(id: string): Promise<Experience> {
-    const response = await apiClient.patch<Experience>(
-      `/v1/admin/experiences/${id}/publish`,
-    );
-
-    return response.data;
-  },
-
-  async unpublish(id: string): Promise<Experience> {
-    const response = await apiClient.patch<Experience>(
-      `/v1/admin/experiences/${id}/unpublish`,
-    );
-
-    return response.data;
-  },
-
   async delete(id: string): Promise<void> {
     await apiClient.delete(`/v1/admin/experiences/${id}`);
   },
