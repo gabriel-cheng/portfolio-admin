@@ -9,6 +9,8 @@ interface Endpoint {
   path: string;
   description: string;
   examplePath: string;
+  responseExample?: string;
+  notes?: string[];
 }
 
 const endpoints: Endpoint[] = [
@@ -17,24 +19,70 @@ const endpoints: Endpoint[] = [
     path: "/projects",
     description: "Lista os projetos publicados no portfólio.",
     examplePath: "/projects",
+    notes: [
+      "Retorna somente projetos disponíveis publicamente.",
+      "A estrutura exata dos objetos depende do DTO de resposta implementado no backend.",
+    ],
   },
   {
     method: "GET",
     path: "/projects/{slug}",
     description: "Busca um projeto publicado pelo seu slug.",
     examplePath: "/projects/meu-projeto",
+    notes: [
+      "Substitua {slug} pelo identificador textual do projeto.",
+      "O projeto precisa estar publicado para ser retornado.",
+    ],
   },
   {
     method: "GET",
     path: "/experiences",
-    description: "Lista as experiências profissionais publicadas.",
-    examplePath: "/experiences",
+    description: "Busca experiências individuais.",
+    examplePath: "/experiences/desenvolvedor-fullstack",
   },
   {
     method: "GET",
-    path: "/experiences/{slug}",
-    description: "Busca uma experiência publicada pelo seu slug.",
-    examplePath: "/experiences/desenvolvedor-full-stack",
+    path: "/companies",
+    description:
+      "Lista as empresas publicadas e suas respectivas experiências profissionais.",
+    examplePath: "/companies",
+    responseExample: `[
+  {
+    "id": "uuid-da-empresa",
+    "name": "Acme Corps",
+    "slug": "acme-corp",
+    "description": "Descrição da empresa",
+    "website": "https://acme.com",
+    "logoUrl": "https://cdn.example.com/logo.png",
+    "experiences": [
+      {
+        "id": "uuid-da-experiencia",
+        "slug": "desenvolvedor-full-stack",
+        "companyId": "uuid-da-empresa",
+        "role": "Desenvolvedor Full Stack",
+        "employmentType": "FULL_TIME",
+        "location": "São Paulo, SP",
+        "description": "Atuação no desenvolvimento de sistemas.",
+        "startDate": "2023-01-01",
+        "endDate": null,
+        "current": true,
+        "displayOrder": 1,
+        "technologies": [
+          "Java",
+          "Spring Boot",
+          "React"
+        ]
+      }
+    ]
+  }
+]`,
+    notes: [
+      "A empresa é a unidade de publicação. Não existe publicação individual de experiências.",
+      "Empresas em rascunho não são retornadas pela API pública.",
+      "As experiências são retornadas agrupadas dentro da empresa correspondente.",
+      "Uma experiência adicionada a uma empresa publicada passa a integrar a resposta pública automaticamente.",
+      "Empresas sem experiências não precisam ser exibidas no portfólio.",
+    ],
   },
 ];
 
@@ -96,7 +144,75 @@ function MethodBadge({ method }: { method: Endpoint["method"] }) {
   );
 }
 
+function CodeExample({ value }: { value: string }) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+      <pre className="text-sm leading-6 text-zinc-300">
+        <code>{value}</code>
+      </pre>
+    </div>
+  );
+}
+
+function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
+  return (
+    <Card className="shadow-none">
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <MethodBadge method={endpoint.method} />
+
+          <code className="break-all text-sm text-zinc-100">
+            {endpoint.path}
+          </code>
+        </div>
+
+        <p className="text-sm leading-6 text-zinc-400">
+          {endpoint.description}
+        </p>
+
+        <CopyField
+          label="URL completa"
+          value={`${API_BASE_URL}${endpoint.examplePath}`}
+        />
+
+        {endpoint.notes && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium text-zinc-200">Observações</h3>
+
+            <ul className="list-inside list-disc space-y-2 text-sm leading-6 text-zinc-400">
+              {endpoint.notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {endpoint.responseExample && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium text-zinc-200">
+              Exemplo de resposta
+            </h3>
+
+            <CodeExample value={endpoint.responseExample} />
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 export function ApiDocsPage() {
+  const fetchExample = `fetch("${API_BASE_URL}/companies")
+  .then((response) => {
+    if (!response.ok) {
+      throw new Error("Falha ao consultar empresas");
+    }
+
+    return response.json();
+  })
+  .then((companies) => console.log(companies))
+  .catch((error) => console.error(error));`;
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -108,22 +224,20 @@ export function ApiDocsPage() {
       <Card>
         <div className="space-y-5">
           <div>
-            <h2 className="text-lg font-semibold text-white">
-              Endpoint base público
-            </h2>
+            <h2 className="text-lg font-semibold text-white">API pública</h2>
 
             <p className="mt-2 text-sm leading-6 text-zinc-400">
-              Utilize esta URL como base para consultar os recursos públicos da
-              aplicação.
+              Utilize a URL base abaixo para consultar os recursos públicos
+              disponibilizados pela aplicação.
             </p>
           </div>
 
           <CopyField label="Base URL" value={API_BASE_URL} />
 
-          <Alert variant="info" title="Método de acesso">
-            Os endpoints documentados nesta página utilizam o método HTTP GET
-            para consulta de dados. As operações administrativas devem utilizar
-            os endpoints protegidos da API.
+          <Alert variant="info" title="Acesso público">
+            Os endpoints desta seção utilizam HTTP GET e não exigem autenticação
+            administrativa. A API retorna somente os dados disponibilizados
+            publicamente pelo backend.
           </Alert>
         </div>
       </Card>
@@ -135,32 +249,13 @@ export function ApiDocsPage() {
           </h2>
 
           <p className="mt-1 text-sm leading-6 text-zinc-400">
-            Recursos de projetos e experiências profissionais.
+            Consulte projetos e empresas com suas experiências profissionais.
           </p>
         </div>
 
         <div className="space-y-4">
           {endpoints.map((endpoint) => (
-            <Card key={endpoint.path} className="shadow-none">
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <MethodBadge method={endpoint.method} />
-
-                  <code className="break-all text-sm text-zinc-100">
-                    {endpoint.path}
-                  </code>
-                </div>
-
-                <p className="text-sm leading-6 text-zinc-400">
-                  {endpoint.description}
-                </p>
-
-                <CopyField
-                  label="URL completa"
-                  value={`${API_BASE_URL}${endpoint.examplePath}`}
-                />
-              </div>
-            </Card>
+            <EndpointCard key={endpoint.path} endpoint={endpoint} />
           ))}
         </div>
       </section>
@@ -173,49 +268,70 @@ export function ApiDocsPage() {
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-zinc-400">
-              Exemplo de consumo do endpoint que lista os projetos públicos.
+              Exemplo de consumo do endpoint que lista as empresas e suas
+              experiências.
             </p>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-            <pre className="text-sm leading-6 text-zinc-300">
-              <code>{`fetch("${API_BASE_URL}/projects")
-  .then((response) => {
-    if (!response.ok) {
-      throw new Error("Falha ao consultar projetos");
-    }
-
-    return response.json();
-  })
-  .then((projects) => console.log(projects))
-  .catch((error) => console.error(error));`}</code>
-            </pre>
-          </div>
+          <CodeExample value={fetchExample} />
 
           <Button
             type="button"
             variant="secondary"
-            onClick={() =>
-              void navigator.clipboard.writeText(
-                `fetch("${API_BASE_URL}/projects")
-  .then((response) => {
-    if (!response.ok) {
-      throw new Error("Falha ao consultar projetos");
-    }
-    return response.json();
-  })
-  .then((projects) => console.log(projects))
-  .catch((error) => console.error(error));`,
-              )
-            }
+            onClick={() => void navigator.clipboard.writeText(fetchExample)}
           >
             Copiar exemplo
           </Button>
+        </div>
+      </Card>
 
-          <p className="text-xs leading-5 text-zinc-500">
-            O formato exato da resposta depende do contrato implementado pelo
-            backend.
-          </p>
+      <Card>
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-white">
+              Publicação das experiências
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              A publicação é controlada pela empresa, e não por cada experiência
+              individual.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+              <p className="font-medium text-zinc-200">Empresa em rascunho</p>
+              <p className="mt-1 text-sm leading-6 text-zinc-400">
+                A empresa e todas as suas experiências permanecem ocultas na API
+                pública.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+              <p className="font-medium text-zinc-200">Empresa publicada</p>
+              <p className="mt-1 text-sm leading-6 text-zinc-400">
+                A empresa e suas experiências são disponibilizadas no endpoint
+                público.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+              <p className="font-medium text-zinc-200">
+                Alterações nas experiências
+              </p>
+              <p className="mt-1 text-sm leading-6 text-zinc-400">
+                Criar, editar ou excluir uma experiência altera os dados
+                retornados pela API. Em empresas publicadas, as alterações
+                passam a refletir no conteúdo público.
+              </p>
+            </div>
+          </div>
+
+          <Alert variant="info" title="Importante">
+            Não procure um endpoint público independente para experiências. Elas
+            são retornadas dentro do objeto da empresa em
+            <code className="mx-1">GET /companies</code>.
+          </Alert>
         </div>
       </Card>
 
@@ -227,24 +343,45 @@ export function ApiDocsPage() {
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-zinc-400">
-              Diferencie as consultas públicas das operações administrativas.
+              A API separa consultas públicas das operações administrativas.
             </p>
           </div>
 
           <ul className="list-inside list-disc space-y-3 text-sm leading-6 text-zinc-400">
+            <li>Consultas públicas não exigem credenciais administrativas.</li>
             <li>
-              As consultas públicas devem estar disponíveis sem credenciais
-              administrativas, conforme as regras do backend.
+              Operações de criação, edição, publicação e exclusão devem utilizar
+              os endpoints administrativos protegidos.
             </li>
             <li>
-              Criação, edição, publicação e exclusão devem utilizar as rotas
-              administrativas protegidas.
+              A autenticação administrativa utiliza JWT armazenado em cookie
+              HttpOnly.
+            </li>
+            <li>
+              O frontend não deve tentar ler diretamente o JWT. O navegador
+              gerencia o cookie nas requisições conforme as configurações de
+              domínio e política do cookie.
             </li>
             <li>
               Nunca exponha senhas, tokens administrativos ou outros segredos no
               código público do frontend.
             </li>
           </ul>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-white">
+            Sobre os exemplos
+          </h2>
+
+          <p className="text-sm leading-6 text-zinc-400">
+            Os exemplos de resposta ilustram a estrutura dos dados e podem
+            conter valores fictícios. Para contratos completos, campos
+            obrigatórios, códigos HTTP e detalhes dos endpoints administrativos,
+            consulte os DTOs e controllers da versão atual do backend.
+          </p>
         </div>
       </Card>
     </div>
